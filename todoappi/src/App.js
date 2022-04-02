@@ -1,24 +1,28 @@
 import React from 'react';
-import axios from 'axios';
+
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Container from 'react-bootstrap/Container';
 
 import './App.css';
+
+import * as api from './api.js';
 import TodoLista from './TodoLista';
+import Kirjautumisdialogi from './Kirjautumisdialogi';
 
 export default class App extends React.Component {
     state = {
         iteemit: [],
-        virheViesti: null
+        virheViesti: null,
+        kirjauduttu: false
     }
 
-    componentDidMount() {
-        axios.get(`http://127.0.0.1:8000/api/tehtavat/`)
-            .then(res => {
+    lataaTehtavat() {
+        api.haeTehtavat()
+            .then((res) => {
                 const iteemit = res.data;
                 this.setState({iteemit});
             })
-            .catch(error => {
+            .catch((error) => {
                 this.setState({virheViesti: error.message});
             });
     }
@@ -31,8 +35,22 @@ export default class App extends React.Component {
                 </Container>
             );
         }
+
+        if (!this.state.kirjauduttu) {
+            return (
+                <Kirjautumisdialogi kirjaudu={
+                    (kayttaja, salasana) => {
+                        const onnistuiko = api.kirjaudu(kayttaja, salasana);
+                        this.setState({kirjauduttu: onnistuiko});
+                        if (onnistuiko) {
+                            this.lataaTehtavat();
+                        }
+                    }
+                }/>
+            );
+        }
+
         const data = this.state.iteemit;
-        console.log(data);
         return (
             <Container>
                 <TodoLista
@@ -46,9 +64,7 @@ export default class App extends React.Component {
     }
 
     merkitseTehtavaTehdyksiRajapinnassa(id) {
-        axios.patch(`http://127.0.0.1:8000/api/tehtavat/${id}/`, {
-            tehty: true
-        })
+        api.merkitseTehdyksi(id)
             .then(() => this.componentDidMount())
             .catch(error => {
                 this.setState({virheViesti: error.message});
